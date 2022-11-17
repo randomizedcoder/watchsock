@@ -48,8 +48,7 @@ impl SockWatch {
             payload: SockDiagMessage::InetRequest(InetRequest {
                 family: AF_INET,
                 protocol: IPPROTO_TCP,
-                //            extensions: ExtensionFlags::empty(),
-                extensions: ExtensionFlags::INFO,
+                extensions: ExtensionFlags::empty(),
                 states: StateFlags::all(),
                 socket_id: SocketId::new_v4(),
             })
@@ -84,7 +83,7 @@ impl SockWatch {
                 match rx_packet.payload {
                     NetlinkPayload::Noop | NetlinkPayload::Ack(_) => {}
                     NetlinkPayload::InnerMessage(SockDiagMessage::InetResponse(response)) => {
-                        newstate.insert(response.header.uid, response.header);
+                        newstate.insert(response.header.inode, response.header);
                     }
                     NetlinkPayload::Done => {
                         return Ok(newstate);
@@ -110,14 +109,14 @@ impl SockWatch {
         let oldmap = self.socksmap.clone();
         let mut difftable = Vec::new();
         // range new map finding added / changed sockets
-        for (newid, newhead) in &newmap {
+        for (newinode, newhead) in &newmap {
             // if socket was previously recorded
-            if oldmap.contains_key(newid) {
-                let oldstate = oldmap.get(&newid).unwrap().state;
+            if oldmap.contains_key(newinode) {
+                let oldstate = oldmap.get(&newinode).unwrap().state;
                 let newstate = newhead.state;
                 if oldstate != newstate {
                     difftable.push(DiffEntry {
-                        id: *newid,
+                        inode: *newinode,
                         reason: String::from(&format!(
                             "state change {} -> {}",
                             self.get_state_string(oldstate),
@@ -129,19 +128,19 @@ impl SockWatch {
             // never seen this socket, add to state
             } else {
                 difftable.push(DiffEntry {
-                    id: *newid,
-                    reason: String::from(&format!("new socket {}", newid)),
+                    inode: *newinode,
+                    reason: String::from(&format!("new socket")),
                     payload: newhead.clone(),
                 });
             }
         }
 
         // range old map to find removed sockets
-        for (oldid, oldhead) in oldmap {
-            if !newmap.contains_key(&oldid) {
+        for (oldinode, oldhead) in oldmap {
+            if !newmap.contains_key(&oldinode) {
                 difftable.push(DiffEntry {
-                    id: oldid,
-                    reason: String::from(&format!("removed socket {}", oldid)),
+                    inode: oldinode,
+                    reason: String::from(&format!("removed socket")),
                     payload: oldhead.clone(),
                 });
             }
@@ -195,7 +194,7 @@ impl SockWatch {
 /// change of socket state
 #[derive(Debug)]
 pub struct DiffEntry {
-    id: u32,
+    inode: u32,
     reason: String,
     payload: InetResponseHeader,
 }
@@ -205,11 +204,10 @@ impl DiffEntry {
     pub fn print(&self) {
         let mut entry = String::from("");
         entry.push_str(&format!(
-            "id: {}, reason: {}, uid: {}, inode {}, src: {}:{}, dst: {}:{}",
-            self.id,
+            "inode: {}, reason: {}, uid: {}, src: {}:{}, dst: {}:{}",
+            self.inode,
             self.reason,
             self.payload.uid,
-            self.payload.inode,
             self.payload.socket_id.source_address,
             self.payload.socket_id.source_port,
             self.payload.socket_id.destination_address,
