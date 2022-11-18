@@ -118,7 +118,7 @@ impl SockWatch {
                     difftable.push(DiffEntry {
                         inode: *newinode,
                         reason: String::from(&format!(
-                            "state change {} -> {}",
+                            "{}->{}",
                             self.get_state_string(oldstate),
                             self.get_state_string(newstate)
                         )),
@@ -129,7 +129,7 @@ impl SockWatch {
             } else {
                 difftable.push(DiffEntry {
                     inode: *newinode,
-                    reason: String::from(&format!("new socket")),
+                    reason: String::from(&format!("added")),
                     payload: newhead.clone(),
                 });
             }
@@ -140,7 +140,7 @@ impl SockWatch {
             if !newmap.contains_key(&oldinode) {
                 difftable.push(DiffEntry {
                     inode: oldinode,
-                    reason: String::from(&format!("removed socket")),
+                    reason: String::from(&format!("removed")),
                     payload: oldhead.clone(),
                 });
             }
@@ -204,14 +204,18 @@ impl DiffEntry {
     pub fn print(&self) {
         let mut entry = String::from("");
         entry.push_str(&format!(
-            "inode: {}, reason: {}, uid: {}, src: {}:{}, dst: {}:{}",
-            self.inode,
-            self.reason,
-            self.payload.uid,
-            self.payload.socket_id.source_address,
-            self.payload.socket_id.source_port,
-            self.payload.socket_id.destination_address,
-            self.payload.socket_id.destination_port,
+            "{:<15} {:<15} {:<25} {:<25} {:<15}",
+            &format!("inode: {}", self.inode),
+            &format!("uid: {}", self.payload.uid),
+            &format!(
+                "src: {}:{}",
+                self.payload.socket_id.source_address, self.payload.socket_id.source_port
+            ),
+            &format!(
+                "dst: {}:{}",
+                self.payload.socket_id.destination_address, self.payload.socket_id.destination_port
+            ),
+            &format!("reason: {}", self.reason),
         ));
 
         println!("{}", entry);
