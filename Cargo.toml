@@ -8,4 +8,7 @@ edition = "2021"
 [dependencies]
 netlink-packet-sock-diag = { version = "0.4.0", features = ["rich_nlas"] }
 netlink-sys = "0.8.3"
-
+io-uring = { git = "https://github.com/tokio-rs/io-uring" }
+# https://docs.rs/anyhow/latest/anyhow/
+anyhow = "1.0.75"
+libc = "0.2.112"
